@@ -8,4 +8,9 @@ if [ "`whoami`" = "root" ] ; then
 	CHROME_EXTRA_ARGS="${CHROME_EXTRA_ARGS} --user-data-dir=ROOT_HOME/.chromium/"
 fi
 
-/usr/bin/chromium/chrome ${CHROME_EXTRA_ARGS} $@
+if [ -f /usr/bin/chromium/chrome ] ; then
+	/usr/bin/chromium/chrome ${CHROME_EXTRA_ARGS} $@
+elif [ -f /usr/bin/chromium/content_shell ] ; then
+	/usr/bin/chromium/content_shell --content-shell-host-window-size=1280x800 ${CHROME_EXTRA_ARGS} $@
+fi
+

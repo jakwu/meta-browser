@@ -1,0 +1,543 @@
+diff --git a/ozone-egl/client_native_pixmap_factory_egl.cc b/ozone-egl/client_native_pixmap_factory_egl.cc
+deleted file mode 100644
+index 0d55ae6..0000000
+--- a/ozone-egl/client_native_pixmap_factory_egl.cc
++++ /dev/null
+@@ -1,15 +0,0 @@
+-// Copyright 2015 The Chromium Authors. All rights reserved.
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-#include "ui/ozone/platform/egl/client_native_pixmap_factory_egl.h"
+-
+-#include "ui/ozone/common/stub_client_native_pixmap_factory.h"
+-
+-namespace ui {
+-
+-ClientNativePixmapFactory* CreateClientNativePixmapFactoryEgl() {
+-  return CreateStubClientNativePixmapFactory();
+-}
+-
+-}  // namespace ui
+diff --git a/ozone-egl/client_native_pixmap_factory_egl.h b/ozone-egl/client_native_pixmap_factory_egl.h
+deleted file mode 100644
+index f48a7d6..0000000
+--- a/ozone-egl/client_native_pixmap_factory_egl.h
++++ /dev/null
+@@ -1,17 +0,0 @@
+-// Copyright 2015 The Chromium Authors. All rights reserved.
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-#ifndef UI_OZONE_PLATFORM_EGLTEST_CLIENT_NATIVE_PIXMAP_FACTORY_EGL_H_
+-#define UI_OZONE_PLATFORM_EGLTEST_CLIENT_NATIVE_PIXMAP_FACTORY_EGL_H_
+-
+-namespace ui {
+-
+-class ClientNativePixmapFactory;
+-
+-// Constructor hook for use in constructor_list.cc
+-ClientNativePixmapFactory* CreateClientNativePixmapFactoryEgl();
+-
+-}  // namespace ui
+-
+-#endif  // UI_OZONE_PLATFORM_EGLTEST_CLIENT_NATIVE_PIXMAP_FACTORY_EGL_H_
+diff --git a/ozone-egl/egl.gypi b/ozone-egl/egl.gypi
+index 24d04d9..5f417f8 100644
+--- a/ozone-egl/egl.gypi
++++ b/ozone-egl/egl.gypi
+@@ -18,16 +18,16 @@
+       'type': 'static_library',
+       'defines': [
+         'OZONE_IMPLEMENTATION',
++        'LINUX',
++        'EGL_API_FB'
+       ],
+       'dependencies': [
+-        '../../base/base.gyp:base',
+-        '../events/events.gyp:events',
+-        '../events/ozone/events_ozone.gyp:events_ozone_evdev',
+-        '../gfx/gfx.gyp:gfx',
++        '../base/base.gyp:base',
++        '../ui/events/events.gyp:events',
++        '../ui/events/ozone/events_ozone.gyp:events_ozone_evdev',
++        '../ui/gfx/gfx.gyp:gfx',
+       ],
+       'sources': [
+-        'client_native_pixmap_factory_egl.cc',
+-        'client_native_pixmap_factory_egl.h',
+         'ozone_platform_egl.cc',
+         'ozone_platform_egl.h',
+         'egl_surface_factory.cc',
+diff --git a/ozone-egl/egl_surface_factory.cc b/ozone-egl/egl_surface_factory.cc
+index ce0c16b..d9a0a28 100644
+--- a/ozone-egl/egl_surface_factory.cc
++++ b/ozone-egl/egl_surface_factory.cc
+@@ -1,7 +1,7 @@
+ // Copyright 2014 The Chromium Authors. All rights reserved.
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+-#include "ui/ozone/platform/egl/egl_surface_factory.h"
++#include "egl_surface_factory.h"
+ #include "third_party/skia/include/core/SkBitmap.h"
+ #include "third_party/skia/include/core/SkCanvas.h"
+ #include "third_party/skia/include/core/SkSurface.h"
+@@ -11,7 +11,7 @@
+ #include "ui/gfx/skia_util.h"
+ #include "ui/gfx/vsync_provider.h"
+ #include "base/logging.h"
+-#include "ui/ozone/common/egl_util.h"
++#include "base/files/file_path.h"
+ 
+ #include "egl_wrapper.h"
+ 
+@@ -27,6 +27,9 @@
+ #define OZONE_EGL_WINDOW_WIDTH 1024
+ #define OZONE_EGL_WINDOW_HEIGTH 768
+ 
++const char kDefaultEglSoname[] = "libEGL.so.1";
++const char kDefaultGlesSoname[] = "libGLESv2.so.2";
++
+ namespace ui {
+ 
+ class EglOzoneCanvas: public ui::SurfaceOzoneCanvas {
+@@ -34,16 +37,15 @@ class EglOzoneCanvas: public ui::SurfaceOzoneCanvas {
+   EglOzoneCanvas();
+   ~EglOzoneCanvas() override  ;
+   // SurfaceOzoneCanvas overrides:
++  virtual skia::RefPtr<SkCanvas> GetCanvas() override {
++    return skia::SharePtr<SkCanvas>(surface_->getCanvas());
++  }
+   void ResizeCanvas(const gfx::Size& viewport_size) override;
+-  //virtual skia::RefPtr<SkCanvas> GetCanvas() override {
+-  //  return skia::SharePtr<SkCanvas>(surface_->getCanvas());
+-  //}
+   void PresentCanvas(const gfx::Rect& damage) override;
+   
+   scoped_ptr<gfx::VSyncProvider> CreateVSyncProvider() override {
+     return scoped_ptr<gfx::VSyncProvider>();
+   }
+-  skia::RefPtr<SkSurface> GetSurface() override { return surface_; }
+ 
+  private: 
+   skia::RefPtr<SkSurface> surface_;
+@@ -109,11 +111,6 @@ class OzoneEgl : public ui::SurfaceOzoneEGL {
+     return true;
+   }
+ 
+-  bool OnSwapBuffersAsync(const SwapCompletionCallback& callback) override
+-  { 
+-    return true; 
+-  }
+-
+   bool ResizeNativeWindow(const gfx::Size& viewport_size) override {
+     return true;
+   }
+@@ -153,17 +150,17 @@ bool SurfaceFactoryEgl::CreateSingleWindow()
+   }
+ 
+   if (ioctl(fb_fd, FBIOGET_VSCREENINFO, &fb_var)) {
+-        LOG(FATAL) << "failed to get fb var info errno: " << errno;
+-        g_width = 640;
+-	g_height = 480;
++    LOG(FATAL) << "failed to get fb var info errno: " << errno;
++    g_width = 640;
++    g_height = 480;
+   } else {
+     g_width = fb_var.xres;
+     g_height = fb_var.yres;
+   }
+ 
+- close(fb_fd);
++  close(fb_fd);
+ 
+- if(!ozone_egl_setup(0, 0, g_width, g_height))
++  if(!ozone_egl_setup(0, 0, g_width, g_height))
+   {
+       LOG(FATAL) << "CreateSingleWindow";
+       return false;
+@@ -185,12 +182,6 @@ intptr_t SurfaceFactoryEgl::GetNativeWindow(){
+   return (intptr_t)ozone_egl_GetNativeWin();
+ }
+ 
+-//gfx::AcceleratedWidget SurfaceFactoryEgl::GetAcceleratedWidget() {
+-//  if (!CreateSingleWindow())
+-//    LOG(FATAL) << "failed to create window";
+-//  return (gfx::AcceleratedWidget)GetNativeDisplay();
+-//}
+-
+ scoped_ptr<ui::SurfaceOzoneEGL>
+ SurfaceFactoryEgl::CreateEGLSurfaceForWidget(
+     gfx::AcceleratedWidget widget) {
+@@ -201,8 +192,40 @@ SurfaceFactoryEgl::CreateEGLSurfaceForWidget(
+ bool SurfaceFactoryEgl::LoadEGLGLES2Bindings(
+     AddGLLibraryCallback add_gl_library,
+     SetGLGetProcAddressProcCallback set_gl_get_proc_address) { 
+-  return LoadDefaultEGLGLES2Bindings(add_gl_library, set_gl_get_proc_address);
+-  //return false;
++  const char* egl_soname = kDefaultEglSoname;
++  const char* gles_soname = kDefaultGlesSoname;
++
++  base::NativeLibraryLoadError error;
++  base::NativeLibrary egl_library =
++      base::LoadNativeLibrary(base::FilePath(egl_soname), &error);
++  if (!egl_library) {
++    LOG(WARNING) << "Failed to load EGL library: " << error.ToString();
++    return false;
++  }
++
++  base::NativeLibrary gles_library =
++      base::LoadNativeLibrary(base::FilePath(gles_soname), &error);
++  if (!gles_library) {
++    LOG(WARNING) << "Failed to load GLES library: " << error.ToString();
++    base::UnloadNativeLibrary(egl_library);
++    return false;
++  }
++
++  GLGetProcAddressProc get_proc_address =
++      reinterpret_cast<GLGetProcAddressProc>(
++          base::GetFunctionPointerFromNativeLibrary(egl_library,
++                                                    "eglGetProcAddress"));
++  if (!get_proc_address) {
++    LOG(ERROR) << "eglGetProcAddress not found.";
++    base::UnloadNativeLibrary(egl_library);
++    base::UnloadNativeLibrary(gles_library);
++    return false;
++  }
++
++  set_gl_get_proc_address.Run(get_proc_address);
++  add_gl_library.Run(egl_library);
++  add_gl_library.Run(gles_library);
++  return true;
+ }
+ 
+ const int32* SurfaceFactoryEgl::GetEGLSurfaceProperties(
+diff --git a/ozone-egl/egl_surface_factory.h b/ozone-egl/egl_surface_factory.h
+index bd42785..763eaa8 100644
+--- a/ozone-egl/egl_surface_factory.h
++++ b/ozone-egl/egl_surface_factory.h
+@@ -7,7 +7,6 @@
+ 
+ #include "base/memory/scoped_ptr.h"
+ #include "ui/ozone/public/surface_factory_ozone.h"
+-#include "ui/ozone/platform/egl/egl_window.h"
+ 
+ 
+ namespace gfx {
+@@ -27,7 +26,6 @@ class SurfaceFactoryEgl : public ui::SurfaceFactoryOzone {
+ 
+   // SurfaceFactoryOzone:
+   intptr_t GetNativeDisplay() override;
+-  //virtual gfx::AcceleratedWidget GetAcceleratedWidget() override;
+   scoped_ptr<ui::SurfaceOzoneEGL> CreateEGLSurfaceForWidget(
+       gfx::AcceleratedWidget widget) override;
+   const int32* GetEGLSurfaceProperties(
+diff --git a/ozone-egl/egl_window.cc b/ozone-egl/egl_window.cc
+index 7968c54..be34fd2 100644
+--- a/ozone-egl/egl_window.cc
++++ b/ozone-egl/egl_window.cc
+@@ -1,14 +1,5 @@
+-#include "ui/ozone/platform/egl/egl_window.h"
+-
+-#include "base/bind.h"
+-#include "ui/events/devices/device_data_manager.h"
+-#include "ui/events/event.h"
+-#include "ui/events/ozone/evdev/event_factory_evdev.h"
+-#include "ui/events/ozone/events_ozone.h"
+-#include "ui/events/platform/platform_event_source.h"
+-#include "ui/gfx/display.h"
+-#include "ui/ozone/common/gpu/ozone_gpu_messages.h"
+-#include "ui/platform_window/platform_window_delegate.h"
++#include "egl_window.h"
++#include "egl_surface_factory.h"
+ 
+ namespace ui {
+ 
+@@ -17,20 +8,15 @@ namespace ui {
+          EventFactoryEvdev* event_factory,
+          const gfx::Rect& bounds)
+      : delegate_(delegate),
++       surface_factory_(surface_factory),
+        event_factory_(event_factory),
+-       bounds_(bounds),
+-       surface_factory_(surface_factory) {
++       bounds_(bounds) {
+    surface_factory_->CreateSingleWindow();
+    window_id_=surface_factory_->GetNativeWindow();
++   delegate_->OnAcceleratedWidgetAvailable(window_id_);
+  }
+  
+  eglWindow::~eglWindow() {
+-   ui::PlatformEventSource::GetInstance()->RemovePlatformEventDispatcher(this);
+- }
+-
+- void eglWindow::Initialize() {
+-   PlatformEventSource::GetInstance()->AddPlatformEventDispatcher(this);
+-   delegate_->OnAcceleratedWidgetAvailable(window_id_, 1.f);
+  }
+  
+  gfx::Rect eglWindow::GetBounds() {
+@@ -84,11 +70,6 @@ bool eglWindow::CanDispatchEvent(const PlatformEvent& ne) {
+ }
+ 
+ uint32_t eglWindow::DispatchEvent(const PlatformEvent& native_event) {
+-  DCHECK(native_event);
+- // Event* event = static_cast<Event*>(native_event);
+- // if (event->IsTouchEvent())
+-//    ScaleTouchEvent(static_cast<TouchEvent*>(event), bounds_.size());
+-
+   DispatchEventFromNativeUiEvent(
+       native_event, base::Bind(&PlatformWindowDelegate::DispatchEvent,
+                                base::Unretained(delegate_)));
+diff --git a/ozone-egl/egl_window.h b/ozone-egl/egl_window.h
+index 0843c5b..d08ba44 100644
+--- a/ozone-egl/egl_window.h
++++ b/ozone-egl/egl_window.h
+@@ -2,16 +2,14 @@
+ #define sghsdjfghfdjkxg
+ 
+ 
+-#include "ui/events/platform/platform_event_dispatcher.h"
+ #include "ui/platform_window/platform_window.h"
+ #include "ui/platform_window/platform_window_delegate.h"
+-#include "ui/ozone/platform/egl/egl_surface_factory.h"
++#include "ui/events/ozone/evdev/event_factory_evdev.h"
+ 
+ namespace ui {
+ class SurfaceFactoryEgl;
+-class EventFactoryEvdev;
+ 
+-class eglWindow : public PlatformWindow, public PlatformEventDispatcher {
++class eglWindow : public PlatformWindow {
+  public:
+   eglWindow(PlatformWindowDelegate* delegate,
+           SurfaceFactoryEgl* surface_factory,
+@@ -19,8 +17,6 @@ class eglWindow : public PlatformWindow, public PlatformEventDispatcher {
+           const gfx::Rect& bounds);
+   ~eglWindow() override;
+ 
+-  void Initialize();
+-
+   // PlatformWindow:
+   gfx::Rect GetBounds() override;
+   void SetBounds(const gfx::Rect& bounds) override;
+@@ -35,23 +31,16 @@ class eglWindow : public PlatformWindow, public PlatformEventDispatcher {
+   void Restore() override;
+   void SetCursor(PlatformCursor cursor) override;
+   void MoveCursorTo(const gfx::Point& location) override;
+-  void ConfineCursorToBounds(const gfx::Rect& bounds) override;
+ 
+   // PlatformEventDispatcher:
+   bool CanDispatchEvent(const PlatformEvent& event) override;
+   uint32_t DispatchEvent(const PlatformEvent& event) override;
+ 
+-  void SetTitle(const base::string16& title) override {}
+-
+-  PlatformImeController* GetPlatformImeController() override { return nullptr; }
+-
+  private:
+   PlatformWindowDelegate* delegate_;
+-  //LibeglplatformShimLoader* eglplatform_shim_;
++  SurfaceFactoryEgl* surface_factory_;
+   EventFactoryEvdev* event_factory_;
+   gfx::Rect bounds_;
+-  //ShimNativeWindowId window_id_;
+-  SurfaceFactoryEgl* surface_factory_;
+   intptr_t window_id_;
+ 
+ 
+diff --git a/ozone-egl/egl_wrapper.cc b/ozone-egl/egl_wrapper.cc
+index b3a6824..ec6ef17 100644
+--- a/ozone-egl/egl_wrapper.cc
++++ b/ozone-egl/egl_wrapper.cc
+@@ -132,6 +132,7 @@ EGLint ozone_egl_setup(EGLint x, EGLint y, EGLint width, EGLint height )
+ #endif
+ 
+     g_EglDisplay = eglGetDisplay(g_NativeDisplay);
++
+     if (g_EglDisplay == EGL_NO_DISPLAY)
+     {
+         LOG(ERROR) << "eglGetDisplay returned EGL_NO_DISPLAY";
+@@ -316,7 +317,7 @@ GLuint ozone_egl_loadShader ( GLenum type, const char *shaderSrc )
+          glGetShaderInfoLog ( shader, infoLen, NULL, infoLog );
+          printf ( "Error compiling shader:%s\n", infoLog );            
+          
+-         delete infoLog;
++         delete[] infoLog;
+       }
+ 
+       glDeleteShader ( shader );
+@@ -374,7 +375,7 @@ GLuint ozone_egl_loadProgram ( const char *vertShaderSrc, const char *fragShader
+          glGetProgramInfoLog ( programObject, infoLen, NULL, infoLog );
+          printf ( "Error linking program:%s\n", infoLog );            
+          
+-         delete infoLog;
++         delete[] infoLog;
+       }
+ 
+       glDeleteProgram ( programObject );
+diff --git a/ozone-egl/ozone_platform_egl.cc b/ozone-egl/ozone_platform_egl.cc
+index 9504994..205eb21 100644
+--- a/ozone-egl/ozone_platform_egl.cc
++++ b/ozone-egl/ozone_platform_egl.cc
+@@ -2,24 +2,19 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-#include "ui/ozone/platform/egl/ozone_platform_egl.h"
+-#include "ui/ozone/platform/egl/egl_surface_factory.h"
++#include "ozone_platform_egl.h"
++#include "egl_surface_factory.h"
+ 
+-#include "ui/ozone/common/native_display_delegate_ozone.h"
+-#include "ui/ozone/common/stub_overlay_manager.h"
+ #include "ui/ozone/public/cursor_factory_ozone.h"
+ #include "ui/ozone/public/gpu_platform_support.h"
+ #include "ui/ozone/public/gpu_platform_support_host.h"
+ #include "ui/events/ozone/device/device_manager.h"
+ #include "ui/events/ozone/evdev/event_factory_evdev.h"
+-#include "ui/events/ozone/layout/keyboard_layout_engine_manager.h"
+-#include "ui/events/ozone/layout/stub/stub_keyboard_layout_engine.h"
+ #include "ui/ozone/public/ozone_platform.h"
+-#include "ui/ozone/public/system_input_injector.h"
+-#include "ui/platform_window/platform_window.h"
+-#include "egl_window.h"
+ #include "egl_wrapper.h"
+ 
++#include "ui/ozone/common/native_display_delegate_ozone.h"
++
+ namespace ui {
+ 
+ namespace {
+@@ -36,14 +31,6 @@ class OzonePlatformEgl : public OzonePlatform {
+   ui::SurfaceFactoryOzone* GetSurfaceFactoryOzone() override {
+     return surface_factory_ozone_.get();
+   }
+-
+-  OverlayManagerOzone* GetOverlayManager() override {
+-    return overlay_manager_.get();
+-  }
+-
+-  InputController* GetInputController() override {
+-    return event_factory_ozone_->input_controller();
+-  }
+   CursorFactoryOzone* GetCursorFactoryOzone() override {
+     return cursor_factory_ozone_.get();
+   }
+@@ -54,55 +41,44 @@ class OzonePlatformEgl : public OzonePlatform {
+     return gpu_platform_support_host_.get();
+   }
+ 
+-/////
+-  scoped_ptr<SystemInputInjector> CreateSystemInputInjector() override {
+-    return event_factory_ozone_->CreateSystemInputInjector();
++  scoped_ptr<PlatformWindow> CreatePlatformWindow(
++    PlatformWindowDelegate* delegate,
++    const gfx::Rect& bounds) override {
++    return  make_scoped_ptr<PlatformWindow>(
++        new eglWindow(delegate,
++                      surface_factory_ozone_.get(),
++                      event_factory_ozone_.get(),
++                      bounds));
+   }
+   scoped_ptr<NativeDisplayDelegate> CreateNativeDisplayDelegate() override {
+     return scoped_ptr<NativeDisplayDelegate>(new NativeDisplayDelegateOzone());
+   }
+-  scoped_ptr<PlatformWindow> CreatePlatformWindow(
+-      PlatformWindowDelegate* delegate,
+-      const gfx::Rect& bounds) override {
+-      scoped_ptr<eglWindow> platform_window(
+-        new eglWindow(delegate, surface_factory_ozone_.get(),
+-           event_factory_ozone_.get(), bounds));
+-      platform_window->Initialize();
+-      return platform_window.Pass();
+-  }
+-  base::ScopedFD OpenClientNativePixmapDevice() const override {
+-    return base::ScopedFD();
+-  }
++
+   void InitializeUI() override {
+-   device_manager_ = CreateDeviceManager();
+-   overlay_manager_.reset(new StubOverlayManager());
+-    KeyboardLayoutEngineManager::SetKeyboardLayoutEngine(
+-        make_scoped_ptr(new StubKeyboardLayoutEngine()));
+-    event_factory_ozone_.reset(new EventFactoryEvdev(
+-        nullptr, device_manager_.get(),
+-        KeyboardLayoutEngineManager::GetKeyboardLayoutEngine()));
++    device_manager_ = CreateDeviceManager();
+     if(!surface_factory_ozone_)
+-     surface_factory_ozone_.reset(new SurfaceFactoryEgl());
++      surface_factory_ozone_.reset(new SurfaceFactoryEgl());
++    event_factory_ozone_.reset(
++        new EventFactoryEvdev(NULL, device_manager_.get()));
+     cursor_factory_ozone_.reset(new CursorFactoryOzone());
+     gpu_platform_support_host_.reset(CreateStubGpuPlatformSupportHost());
+   }
+ 
+   void InitializeGPU() override {
+     if(!surface_factory_ozone_)
+-     surface_factory_ozone_.reset(new SurfaceFactoryEgl());
+-    cursor_factory_ozone_.reset(new CursorFactoryOzone());
++      surface_factory_ozone_.reset(new SurfaceFactoryEgl());
+     gpu_platform_support_.reset(CreateStubGpuPlatformSupport());
+  }
+ 
+  private:
+   scoped_ptr<DeviceManager> device_manager_;
+-  scoped_ptr<EventFactoryEvdev> event_factory_ozone_;
+   scoped_ptr<SurfaceFactoryEgl> surface_factory_ozone_;
++  scoped_ptr<EventFactoryEvdev> event_factory_ozone_;
+   scoped_ptr<CursorFactoryOzone> cursor_factory_ozone_;
+ 
+   scoped_ptr<GpuPlatformSupport> gpu_platform_support_;
+   scoped_ptr<GpuPlatformSupportHost> gpu_platform_support_host_;
+-  scoped_ptr<OverlayManagerOzone> overlay_manager_;
++
+   DISALLOW_COPY_AND_ASSIGN(OzonePlatformEgl);
+ };
+ 
+diff --git a/ozone-egl/patches/001-add-media-ozone-platforn-egl.patch b/ozone-egl/patches/001-add-media-ozone-platforn-egl.patch
+new file mode 100644
+index 0000000..4fefd9a
+--- /dev/null
++++ b/ozone-egl/patches/001-add-media-ozone-platforn-egl.patch
+@@ -0,0 +1,15 @@
++diff --git a/ozone-egl/media/ozone/media_ozone_platform.cc b/ozone-egl/media/ozone/media_ozone_platform.cc
++index 804de37..92aed17 100644
++--- a/ozone-egl/media/ozone/media_ozone_platform.cc
+++++ b/ozone-egl/media/ozone/media_ozone_platform.cc
++@@ -48,6 +48,10 @@ MediaOzonePlatform* CreateMediaOzonePlatformTest() {
++   return new MediaOzonePlatformStub;
++ }
++ 
+++MediaOzonePlatform* CreateMediaOzonePlatformEgl() {
+++  return new MediaOzonePlatformStub;
+++}
+++
++ MediaOzonePlatform::MediaOzonePlatform() {
++   CHECK(!instance_) << "There should only be a single MediaOzonePlatform.";
++   instance_ = this;
+diff --git a/ozone-egl/supplement.gypi b/ozone-egl/supplement.gypi
+new file mode 100644
+index 0000000..ed5bf4b
+--- /dev/null
++++ b/ozone-egl/supplement.gypi
+@@ -0,0 +1,18 @@
++{
++  'variables':  {
++    'ozone_platform_egl%': 1,
++  },
++  'conditions': [
++    ['<(ozone_platform_egl) == 1', {
++      'variables':  {
++        'external_ozone_platform_deps': [
++          '<(DEPTH)/ozone-egl/egl.gypi:ozone_platform_egl',
++        ],
++        'external_ozone_platforms': [
++          'egl'
++        ],
++        'ozone_platform%': 'egl',
++      },
++    }],
++  ],
++}

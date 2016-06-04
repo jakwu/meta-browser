@@ -1,5 +1,5 @@
 LICENSE = "BSD"
-DEPENDS = "xz-native pciutils pulseaudio cairo nss zlib-native libav cups ninja-native gconf libexif pango libdrm"
+DEPENDS = "xz-native pciutils pulseaudio nss zlib-native libav cups ninja-native gconf libexif libdrm"
 
 COMPATIBLE_MACHINE = "(-)"
 COMPATIBLE_MACHINE_x86 = "(.*)"
@@ -13,39 +13,63 @@ CHROMIUM_BUILD_TYPE ??= "Release"
 
 inherit gettext pythonnative
 
-ARMFPABI_armv7a = "${@bb.utils.contains('TUNE_FEATURES', 'callconvention-hard', 'arm_float_abi=hard', 'arm_float_abi=softfp', d)}"
-GYP_DEFINES += "${ARMFPABI} release_extra_cflags='-Wno-error=unused-local-typedefs' sysroot=''"
+
+GYP_ARCH_DEFINES = ""
+GYP_ARCH_DEFINES_i586 = " target_arch=ia32"
+GYP_ARCH_DEFINES_x86-64 = " target_arch=x64"
+GYP_ARCH_DEFINES_armv7a = " target_arch=arm armv7=1 arm_thumb=1 arm_neon=1 ${@bb.utils.contains('TUNE_FEATURES', 'callconvention-hard', 'arm_float_abi=hard', 'arm_float_abi=softfp', d)}"
+GYP_ARCH_DEFINES_armv6 = " target_arch=arm armv7=0 arm_neon=0"
+
+CHROMIUM_EXTRA_CFLAGS ?= ""
+GYP_DEFINES += "${GYP_ARCH_DEFINES} sysroot=''"
+
+do_unpack[postfuncs] += "prepare_proj_dir"
+
+prepare_proj_dir() {
+    touch ${S}/chrome/test/data/webui/i18n_process_css_test.html
+}
 
 do_configure() {
 	cd ${S}
 	GYP_DEFINES="${GYP_DEFINES}" export GYP_DEFINES
 	# replace LD with CXX, to workaround a possible gyp issue?
 	LD="${CXX}" export LD
-	CC="${CC}" export CC
-	CXX="${CXX}" export CXX
+	CC="${CC} ${CFLAGS} ${CHROMIUM_EXTRA_CFLAGS}" export CC
+	CXX="${CXX} ${CXXFLAGS} ${CHROMIUM_EXTRA_CFLAGS}" export CXX
 	CC_host="${BUILD_CC}" export CC_host
 	CXX_host="${BUILD_CXX}" export CXX_host
 }
+
+CHROMIUM_PAK_FILES ?= " \
+    content_resources.pak \
+    keyboard_resources.pak \
+    chrome_100_percent.pak \
+    chrome_200_percent.pak \
+    chrome_material_100_percent.pak \
+    chrome_material_200_percent.pak \
+    product_logo_48.png \
+    resources.pak \
+    locales/*.pak \
+    content_shell.pak \
+    cast_shell.pak \
+"
 
 do_install() {
 	if [ -f "${WORKDIR}/google-chrome" ]; then
 		install -Dm 0755 ${WORKDIR}/google-chrome ${D}${bindir}/google-chrome
 	fi
-	if [ -f "${WORKDIR}/cef-simple" ]; then
-		install -Dm 0755 ${WORKDIR}/cef-simple ${D}${bindir}/cef-simple
-	fi
 	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/chrome_sandbox" ]; then
 		install -Dm 4755 ${B}/out/${CHROMIUM_BUILD_TYPE}/chrome_sandbox ${D}${sbindir}/chrome-devel-sandbox
-	fi
-	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/cefsimple" ]; then
-		install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/cefsimple ${D}${bindir}/${BPN}/cefsimple
-	fi
-	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/lib/libcef.so" ]; then
-		install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/lib/libcef.so ${D}${libdir}/${BPN}/libcef.so
 	fi
 	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/chrome" ]; then
 		install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/chrome ${D}${bindir}/${BPN}/chrome
 	fi
+	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/content_shell" ]; then
+		install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/content_shell ${D}${bindir}/${BPN}/content_shell
+	fi
+  if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/cast_shell" ]; then
+    install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/cast_shell ${D}${bindir}/${BPN}/cast_shell
+  fi
 	if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/icudtl.dat" ]; then
 		install -Dm 0644 ${B}/out/${CHROMIUM_BUILD_TYPE}/icudtl.dat ${D}${bindir}/${BPN}/icudtl.dat
 	fi
@@ -55,14 +79,15 @@ do_install() {
 	#Chromium plugins libs
 	for f in libpdf.so libosmesa.so libffmpegsumo.so; do
 		if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/$f" ]; then
-			install -Dm 0644 ${B}/out/${CHROMIUM_BUILD_TYPE}/$f ${D}${libdir}/${BPN}/$f
+			install -Dm 0644 ${B}/out/${CHROMIUM_BUILD_TYPE}/$f ${D}${bindir}/${BPN}/$f
 		fi
+    if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/lib/$f" ]; then
+      install -Dm 0644 ${B}/out/${CHROMIUM_BUILD_TYPE}/$f ${D}${bindir}/${BPN}/$f
+    fi
 	done
 
-	# Chromium *.pak files and CEF pak files (prefixed with cef_)
-	for f in content_resources.pak keyboard_resources.pak chrome_100_percent.pak product_logo_48.png resources.pak \
-	         cef_100_percent.pak cef_200_percent.pak cef_resources.pak cef.pak \
-		 locales/en-US.pak; do
+	# Chromium *.pak files
+	for f in ${CHROMIUM_PAK_FILES}; do
 		if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/$f" ]; then
 			install -Dm 0644 ${B}/out/${CHROMIUM_BUILD_TYPE}/$f ${D}${bindir}/${BPN}/$f
 		fi
@@ -70,10 +95,11 @@ do_install() {
 
 }
 
-PACKAGES =+ "${PN}-codecs-ffmpeg ${PN}-plugin-pdf"
+PACKAGES += "${PN}-codecs-ffmpeg ${PN}-plugin-pdf"
 
-FILES_${PN}-codecs-ffmpeg = "${libdir}/${BPN}/libffmpegsumo.so"
-FILES_${PN}-plugin-pdf = "${libdir}/${BPN}/libpdf.so"
+FILES_${PN}-codecs-ffmpeg = "${bindir}/${BPN}/libffmpegsumo.so"
+FILES_${PN}-plugin-pdf = "${bindir}/${BPN}/libpdf.so"
+FILES_${PN}-libosmesa = "${bindir}/${BPN}/libosmesa.so"
 
 FILES_${PN} = "${bindir}/${BPN} ${datadir}/applications ${sbindir}/ ${libdir}/${BPN}/"
 FILES_${PN} += "${bindir} ${libdir}"

@@ -13,14 +13,13 @@ SRC_URI = "http://people.linaro.org/~zoltan.kuscsik/chromium-browser/chromium_re
            git://github.com/kuscsik/chromiumembedded.git;protocol=https;destsuffix=src/cef;branch=aura;name=cef \
            git://github.com/kuscsik/ozone-egl.git;protocol=https;destsuffix=src/ui/ozone/platform/egl;branch=master;name=egl \
            git://chromium.googlesource.com/chromium/tools/depot_tools.git;protocol=https;destsuffix=depot_tools;branch=master;name=tools \
-           file://01_get_svn_version_from_LASTCHANGE.patch \
-	   file://cef-simple \
-	   file://0001-bignum.cc-disable-warning-from-gcc-5.patch \
-	   file://0002-image_util.cc-disable-warning-from-gcc-5.patch \
-           file://0003-disable-uninitialized-warning.patch \
-	   file://0003-gtest-typed-test.h-disable-warning-unused-definition.patch \
-	   file://0004-SaturatedArithmetic.h-put-parentheses-to-silence-war.patch \
-	  "
+           file://cef-simple \
+           file://${PV}/01_get_svn_version_from_LASTCHANGE.patch \
+           file://${PV}/0001-bignum.cc-disable-warning-from-gcc-5.patch \
+           file://${PV}/0002-image_util.cc-disable-warning-from-gcc-5.patch \
+           file://${PV}/0003-gtest-typed-test.h-disable-warning-unused-definition.patch \
+           file://${PV}/0004-SaturatedArithmetic.h-put-parentheses-to-silence-war.patch \
+"
 SRC_URI[md5sum] = "9efbb50283b731042e62b9bd5e312b2f"
 SRC_URI[sha256sum] = "f608e97dadf6ea4d885b24fd876896d46840fa39bf743ea2025075aee9fb348d"
 
@@ -28,15 +27,18 @@ S = "${WORKDIR}/chromium_rev_${PV}"
 
 do_fetch[vardeps] += "SRCREV_FORMAT SRCREV_cef SRCREV_egl SRCREV_tools"
 
-GYP_ARCH_DEFINES_x86 = " target_arch=ia32"
-GYP_ARCH_DEFINES_armv7a = " target_arch=arm arm_float_abi=hard"
-
 export GYP_GENERATORS="ninja"
 export BUILD_TARGET_ARCH="${TARGET_ARCH}"
-export GYP_DEFINES="${GYP_ARCH_DEFINES} release_extra_cflags='-Wno-error=unused-local-typedefs' sysroot=''"
 
 EXTRA_OEGYP =	" \
-    ${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-gold', '-Ddisable_fatal_linker_warnings=1', '', d)} \
+    ${@base_contains('DISTRO_FEATURES', 'ld-is-gold', '-Ddisable_fatal_linker_warnings=1', '', d)} \
+"
+
+CHROMIUM_PAK_FILES += " \
+    cef_100_percent.pak \
+    cef_200_percent.pak \
+    cef_resources.pak \
+    cef.pak \
 "
 
 do_configure_prepend() {
@@ -62,4 +64,23 @@ do_qa_configure() {
 
 do_compile() {
     ninja -C out/${CHROMIUM_BUILD_TYPE} ${PARALLEL_MAKE} cefsimple
+}
+
+CHROMIUM_PAK_FILES += " \
+    cef_100_percent.pak \
+    cef_200_percent.pak \
+    cef_resources.pak \
+    cef.pak \
+   "
+
+do_install_append() {
+  if [ -f "${WORKDIR}/cef-simple" ]; then
+    install -Dm 0755 ${WORKDIR}/cef-simple ${D}${bindir}/cef-simple
+  fi
+  if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/cefsimple" ]; then
+    install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/cefsimple ${D}${bindir}/${BPN}/cefsimple
+  fi
+  if [ -f "${B}/out/${CHROMIUM_BUILD_TYPE}/lib/libcef.so" ]; then
+    install -Dm 0755 ${B}/out/${CHROMIUM_BUILD_TYPE}/lib/libcef.so ${D}${libdir}/${BPN}/libcef.so
+  fi
 }

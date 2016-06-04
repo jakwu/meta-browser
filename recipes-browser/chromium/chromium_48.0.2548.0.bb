@@ -1,4 +1,7 @@
+
 include chromium-browser.inc
+
+LIC_FILES_CHKSUM = "file://LICENSE;md5=537e0b52077bf0a616d0a0c8a79bc9d5"
 
 SRC_URI += "\
         file://chromium-48/add_missing_stat_h_include.patch \
@@ -15,15 +18,11 @@ SRC_URI += "\
         ${@bb.utils.contains('PACKAGECONFIG', 'ignore-lost-context', 'file://chromium-48/0001-Remove-accelerated-Canvas-support-from-blacklist.patch', '', d)} \
         ${@bb.utils.contains('PACKAGECONFIG', 'disable-api-keys-info-bar', 'file://chromium-48/0002-Disable-API-keys-info-bar.patch', '', d)} \
 "
-
-LIC_FILES_CHKSUM = "file://LICENSE;md5=0fca02217a5d49a14dfe2d11837bb34d"
 SRC_URI[md5sum] = "0534981cc21efcd11e64b67b85854420"
 SRC_URI[sha256sum] = "4ca4e2adb340b3fb4d502266ad7d6bda45fa3519906dbf63cce11a63f680dbc8"
 
-EXTRA_OEGYP += " \
-	-Dv8_use_external_startup_data=0 \
-"
 
+# ozone-wayland ########################################################################################################################
 OZONE_WAYLAND_GIT_BRANCH = "Milestone-SouthSister"
 OZONE_WAYLAND_GIT_SRCREV = "c605505044af3345a276abbd7c29fd53db1dea40"
 
@@ -39,7 +38,15 @@ python() {
             bb.fatal("Chromium 48 Wayland version cannot be built in component-mode")
 }
 
-CHROMIUM_X11_DEPENDS = "xextproto gtk+ libxi libxss"
-CHROMIUM_X11_GYP_DEFINES = ""
-CHROMIUM_WAYLAND_DEPENDS = "wayland libxkbcommon"
-CHROMIUM_WAYLAND_GYP_DEFINES = "use_ash=1 use_aura=1 chromeos=0 use_ozone=1 use_xkbcommon=1"
+# ozone-egl ###########################################################################################################################
+OZONE_EGL_GIT_BRANCH = "chromium-47.0.2526.x"
+OZONE_EGL_GIT_SRCREV = "e421480361f75f0185b5744ab3c6dd7b10b08abc"
+OZONE_EGL_SRC_URI = "git://github.com/atiti/ozone-egl.git;destsuffix=${CROMIUM_VERSION}/ozone-egl;branch=${OZONE_EGL_GIT_BRANCH};rev=${OZONE_EGL_GIT_SRCREV}"
+
+# ozone-fb ###########################################################################################################################
+CHROMIUM_USE_OZONE_FB = "0"
+
+#######################################################################################################################################
+EXTRA_GYP_DEFINES += "\
+    use_allocator=tcmalloc \
+"

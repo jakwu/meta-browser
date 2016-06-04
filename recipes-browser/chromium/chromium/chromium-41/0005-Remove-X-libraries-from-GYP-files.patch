@@ -1,0 +1,56 @@
+diff --git a/third_party/libjingle/source/talk/libjingle.gyp b/third_party/libjingle/source/talk/libjingle.gyp
+index 29a23bd..a7fea88 100755
+--- a/third_party/libjingle/source/talk/libjingle.gyp
++++ b/third_party/libjingle/source/talk/libjingle.gyp
+@@ -491,8 +491,6 @@
+           ],
+           'libraries': [
+             '-lrt',
+-            '-lXext',
+-            '-lX11',
+           ],
+         }],
+         ['OS=="win"', {
+diff --git a/third_party/libjingle/source/talk/libjingle_examples.gyp b/third_party/libjingle/source/talk/libjingle_examples.gyp
+index 27b0b8a..2eb01d7 100755
+--- a/third_party/libjingle/source/talk/libjingle_examples.gyp
++++ b/third_party/libjingle/source/talk/libjingle_examples.gyp
+@@ -134,10 +134,6 @@
+                 'libraries': [
+                   '<!@(pkg-config --libs-only-l glib-2.0 gobject-2.0'
+                       ' gthread-2.0 gtk+-2.0)',
+-                  '-lX11',
+-                  '-lXcomposite',
+-                  '-lXext',
+-                  '-lXrender',
+                 ],
+               },
+             }],  # OS=="linux"
+diff --git a/third_party/webrtc/base/base.gyp b/third_party/webrtc/base/base.gyp
+index 645c1dc..444a3de 100644
+--- a/third_party/webrtc/base/base.gyp
++++ b/third_party/webrtc/base/base.gyp
+@@ -594,10 +594,6 @@
+             'libraries': [
+               '-ldl',
+               '-lrt',
+-              '-lXext',
+-              '-lX11',
+-              '-lXcomposite',
+-              '-lXrender',
+             ],
+           },
+         }, {
+diff --git a/third_party/webrtc/modules/desktop_capture/desktop_capture.gypi b/third_party/webrtc/modules/desktop_capture/desktop_capture.gypi
+index 49f9347..fea16ed 100644
+--- a/third_party/webrtc/modules/desktop_capture/desktop_capture.gypi
++++ b/third_party/webrtc/modules/desktop_capture/desktop_capture.gypi
+@@ -102,7 +102,7 @@
+             'desktop_capture_differ_sse2',
+           ],
+         }],
+-        ['use_x11 == 1', {
++        ['use_x11 == 1 and <(ozone_platform_wayland) != 1', {
+           'link_settings': {
+             'libraries': [
+               '-lX11',

@@ -1,0 +1,12 @@
+diff --git a/build/common.gypi b/build/common.gypi
+index 391f2a3..e8f139e 100644
+--- a/build/common.gypi
++++ b/build/common.gypi
+@@ -3684,6 +3684,7 @@
+         ],
+         'libraries' : [
+           '<(libraries_for_target)',
++          '-latomic',
+         ],
+         'configurations': {
+           'Debug_Base': {

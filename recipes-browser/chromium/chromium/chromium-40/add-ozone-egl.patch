@@ -1,0 +1,15 @@
+diff --git a/ui/ozone/ozone.gyp b/ui/ozone/ozone.gyp
+index f965c61..9ec3850 100644
+--- a/ui/ozone/ozone.gyp
++++ b/ui/ozone/ozone.gyp
+@@ -207,5 +207,10 @@
+         'platform/test/test.gypi',
+       ],
+     }],
++    ['<(ozone_platform_egl) == 1', {
++      'includes': [
++        'platform/egl/egl.gypi',
++      ],
++    }],
+   ],
+ }
