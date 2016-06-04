@@ -93,9 +93,9 @@ PACKAGECONFIG[component-build] = ""
 PACKAGECONFIG[disable-api-keys-info-bar] = ""
 PACKAGECONFIG[ignore-lost-context] = ""
 PACKAGECONFIG[impl-side-painting] = ""
-PACKAGECONFIG[use-egl] = ""
 PACKAGECONFIG[kiosk-mode] = ""
 PACKAGECONFIG[proprietary-codecs] = ""
+PACKAGECONFIG[disable-nacl] = ""
 
 
 CHROMIUM_USE_X11 ?= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', '0', \
