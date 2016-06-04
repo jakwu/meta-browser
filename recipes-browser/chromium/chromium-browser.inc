@@ -120,7 +120,7 @@ CHROMIUM_USE_OZONE_FB ?= "${@bb.utils.contains('PACKAGECONFIG', 'use-egl', '0', 
 CHROMIUM_EXTRA_ARGS ?= " \
     ${@oe.utils.conditional('CHROMIUM_USE_OZONE_EGL', '1', '--ozone-platform=egl', '', d)} \
     ${@oe.utils.conditional('CHROMIUM_USE_OZONE_FB', '1', '--ozone-platform=fb', '', d)} \
-    ${@bb.utils.contains('PACKAGECONFIG', 'use-egl', '--use-gl=egl', '--disable-gpu', d)} \
+    ${@bb.utils.contains('CHROMIUM_BUILD_TARGET', 'chrome_sandbox', '', '--no-sandbox', d)} \
     ${@bb.utils.contains('PACKAGECONFIG', 'use-egl', '--use-gl=egl', '--disable-gpu', d)} \
     ${@bb.utils.contains('PACKAGECONFIG', 'ignore-lost-context', '--gpu-no-context-lost', '', d)} \
     ${@bb.utils.contains('PACKAGECONFIG', 'impl-side-painting', '--enable-gpu-rasterization --enable-impl-side-painting', '', d)} \
