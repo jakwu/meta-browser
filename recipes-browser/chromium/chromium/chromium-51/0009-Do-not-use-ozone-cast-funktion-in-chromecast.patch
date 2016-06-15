@@ -1,0 +1,21 @@
+diff --git a/chromecast/browser/cast_browser_main_parts.cc b/chromecast/browser/cast_browser_main_parts.cc
+index 13f74ff..8adf131 100644
+--- a/chromecast/browser/cast_browser_main_parts.cc
++++ b/chromecast/browser/cast_browser_main_parts.cc
+@@ -408,7 +408,7 @@ void CastBrowserMainParts::PreMainMessageLoopRun() {
+   cast_browser_process_->SetRemoteDebuggingServer(base::WrapUnique(
+       new RemoteDebuggingServer(cast_browser_process_->browser_client()
+                                     ->EnableRemoteDebuggingImmediately())));
+-
++#if 0
+ #if defined(USE_AURA) && !BUILDFLAG(DISABLE_DISPLAY)
+   // TODO(halliwell) move audio builds to use ozone_platform_cast, then can
+   // simplify this by removing DISABLE_DISPLAY condition.  Should then also
+@@ -422,6 +422,7 @@ void CastBrowserMainParts::PreMainMessageLoopRun() {
+       base::Bind(&media::VideoPlaneController::SetGeometry,
+                  base::Unretained(video_plane_controller_.get())));
+ #endif
++#endif
+ 
+   cast_browser_process_->SetCastService(
+       cast_browser_process_->browser_client()->CreateCastService(

@@ -1,0 +1,49 @@
+diff --git a/content/browser/resource_context_impl.cc b/content/browser/resource_context_impl.cc
+index 017e08d..8a61e20 100644
+--- a/content/browser/resource_context_impl.cc
++++ b/content/browser/resource_context_impl.cc
+@@ -18,6 +18,19 @@
+ #include "net/base/keygen_handler.h"
+ #include "net/ssl/client_cert_store.h"
+ 
++#if defined(USE_NSS_CERTS)
++#include "net/ssl/client_cert_store_nss.h"
++#endif
++
++#if defined(OS_WIN)
++#include "net/ssl/client_cert_store_win.h"
++#endif
++
++#if defined(OS_MACOSX)
++#include "net/ssl/client_cert_store_mac.h"
++#endif
++
++
+ using base::UserDataAdapter;
+ 
+ namespace content {
+@@ -63,7 +76,24 @@ ResourceContext::SaltCallback ResourceContext::GetMediaDeviceIDSalt() {
+ }
+ 
+ scoped_ptr<net::ClientCertStore> ResourceContext::CreateClientCertStore() {
++#if defined(OS_CHROMEOS)
++  // TODO
++  return scoped_ptr<net::ClientCertStore>();
++#elif defined(USE_NSS_CERTS)
++  return scoped_ptr<net::ClientCertStore>(new net::ClientCertStoreNSS(
++    net::ClientCertStoreNSS::PasswordDelegateFactory()));
++#elif defined(OS_WIN)
++  return std::unique_ptr<net::ClientCertStore>(new net::ClientCertStoreWin());
++#elif defined(OS_MACOSX)
++  return std::unique_ptr<net::ClientCertStore>(new net::ClientCertStoreMac());
++#elif defined(OS_ANDROID)
++  // Android does not use the ClientCertStore infrastructure. On Android client
++  // cert matching is done by the OS as part of the call to show the cert
++  // selection dialog.
++  return scoped_ptr<net::ClientCertStore>();
++#else
+   return scoped_ptr<net::ClientCertStore>();
++#endif
+ }
+ 
+ void ResourceContext::CreateKeygenHandler(
