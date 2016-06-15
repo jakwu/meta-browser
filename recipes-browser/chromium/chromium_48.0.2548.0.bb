@@ -1,7 +1,7 @@
 
 include chromium-browser.inc
 
-LIC_FILES_CHKSUM = "file://LICENSE;md5=537e0b52077bf0a616d0a0c8a79bc9d5"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=0fca02217a5d49a14dfe2d11837bb34d"
 
 SRC_URI += "\
         file://chromium-48/add_missing_stat_h_include.patch \
@@ -15,6 +15,7 @@ SRC_URI += "\
         file://chromium-48/0010-Fix-rv-may-be-used-uninitialized-in-this-function-wa.patch \
         file://chromium-48/0011-Replace-readdir_r-with-readdir.patch \
         file://chromium-48/0012-Workaround-for-unused-variable-error-in-ui-gfx-color.patch \
+        file://chromium-48/0013-No-extern-in-libgfx.patch \
         ${@bb.utils.contains('PACKAGECONFIG', 'ignore-lost-context', 'file://chromium-48/0001-Remove-accelerated-Canvas-support-from-blacklist.patch', '', d)} \
         ${@bb.utils.contains('PACKAGECONFIG', 'disable-api-keys-info-bar', 'file://chromium-48/0002-Disable-API-keys-info-bar.patch', '', d)} \
 "
@@ -39,12 +40,11 @@ python() {
 }
 
 # ozone-egl ###########################################################################################################################
-OZONE_EGL_GIT_BRANCH = "chromium-47.0.2526.x"
-OZONE_EGL_GIT_SRCREV = "e421480361f75f0185b5744ab3c6dd7b10b08abc"
-OZONE_EGL_SRC_URI = "git://github.com/atiti/ozone-egl.git;destsuffix=${CROMIUM_VERSION}/ozone-egl;branch=${OZONE_EGL_GIT_BRANCH};rev=${OZONE_EGL_GIT_SRCREV}"
+CHROMIUM_USE_OZONE_EGL = "0"
 
 # ozone-fb ###########################################################################################################################
-CHROMIUM_USE_OZONE_FB = "0"
+OZONE_FB_GIT_BRANCH = "chromium-48.0.2548.x"
+OZONE_FB_GIT_SRCREV = "e254d77ed3fa53ed2af81fd80a13eadcf588e066"
 
 #######################################################################################################################################
 EXTRA_GYP_DEFINES += "\

@@ -1,0 +1,42 @@
+diff --git a/ui/gfx/color_palette.cc b/ui/gfx/color_palette.cc
+index a8e6280..cbfc78b 100644
+--- a/ui/gfx/color_palette.cc
++++ b/ui/gfx/color_palette.cc
+@@ -1,5 +1,6 @@
+ #include "color_palette.h"
+ 
++#if 0
+ namespace gfx {
+ 
+ const SkColor kChromeIconGrey = SkColorSetRGB(0x5A, 0x5A, 0x5A);
+@@ -10,3 +11,4 @@ const SkColor kGoogleGreen700 = SkColorSetRGB(0x0B, 0x80, 0x43);
+ const SkColor kGoogleYellow700 = SkColorSetRGB(0xF0, 0x93, 0x00);
+ 
+ }  // namespace gfx
++#endif
+diff --git a/ui/gfx/color_palette.h b/ui/gfx/color_palette.h
+index 63fa8af..372f52c 100644
+--- a/ui/gfx/color_palette.h
++++ b/ui/gfx/color_palette.h
+@@ -9,15 +9,15 @@
+ 
+ namespace gfx {
+ 
+-extern const SkColor kChromeIconGrey;
++const SkColor kChromeIconGrey = SkColorSetRGB(0x5A, 0x5A, 0x5A);
+ 
+ // The number refers to the shade of darkness. Each color in the MD
+ // palette ranges from 100-900.
+-extern const SkColor kGoogleBlue300;
+-extern const SkColor kGoogleBlue500;
+-extern const SkColor kGoogleRed700;
+-extern const SkColor kGoogleGreen700;
+-extern const SkColor kGoogleYellow700;
++const SkColor kGoogleBlue300 = SkColorSetRGB(0x7B, 0xAA, 0xF7);
++const SkColor kGoogleBlue500 = SkColorSetRGB(0x42, 0x85, 0xF4);
++const SkColor kGoogleRed700 = SkColorSetRGB(0xC5, 0x39, 0x29);
++const SkColor kGoogleGreen700 = SkColorSetRGB(0x0B, 0x80, 0x43);
++const SkColor kGoogleYellow700 = SkColorSetRGB(0xF0, 0x93, 0x00);
+ 
+ }  // namespace gfx
+ 
