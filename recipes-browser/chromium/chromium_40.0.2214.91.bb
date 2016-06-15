@@ -14,8 +14,8 @@ SRC_URI += "\
         ${@bb.utils.contains('PACKAGECONFIG', 'impl-side-painting', 'file://chromium-40/0002-Add-Linux-to-impl-side-painting-whitelist.patch', '', d)} \
         ${@bb.utils.contains('PACKAGECONFIG', 'disable-api-keys-info-bar', 'file://chromium-40/0003-Disable-API-keys-info-bar.patch', '', d)} \
 "
-SRC_URI[md5sum] = "f2fc8da98bfc67640c7c22d5ecf51d8d"
-SRC_URI[sha256sum] = "2261b96dba5747b52512e2391956c54f4e36b9bbaa310b16c7fb0f1e4efba6a5"
+SRC_URI[md5sum] = "1f5093bd7e435fdebad070e74bfb3438"
+SRC_URI[sha256sum] = "f72fda9ff1ea256ab911610ee532eadf8303137d431f2481d01d3d60e5e64149"
 
 # ozone-wayland ########################################################################################################################
 OZONE_WAYLAND_GIT_BRANCH = "Milestone-ThanksGiving"
