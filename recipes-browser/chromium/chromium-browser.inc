@@ -246,10 +246,10 @@ CHROMIUM_X11_GYP_DEFINES ?= ""
 CHROMIUM_OZONE_WAYLAND_DEPENDS ?= "pango cairo wayland libxkbcommon"
 CHROMIUM_OZONE_WAYLAND_GYP_DEFINES ?= "use_ash=1 use_aura=1 chromeos=0 use_ozone=1 ozone_auto_platforms=0"
 # NOTE: We need at leased one font installed. Otherwise the renderer process will crash sillently.
-CHROMIUM_OZONE_EGL_DEPENDS ?= "liberation-fonts"
+CHROMIUM_OZONE_EGL_DEPENDS ?= "freetype liberation-fonts"
 CHROMIUM_OZONE_EGL_GYP_DEFINES ?= "embedded=1 ozone_platform_egl=1 ozone_platform=egl ozone_auto_platforms=0"
 # NOTE: We need at leased one font installed. Otherwise the renderer process will crash sillently.
-CHROMIUM_OZONE_FB_DEPENDS ?= "liberation-fonts"
+CHROMIUM_OZONE_FB_DEPENDS ?= "freetype liberation-fonts"
 CHROMIUM_OZONE_FB_GYP_DEFINES ?= "embedded=1 ozone_platform_fb=1 ozone_platform=fb ozone_auto_platforms=0"
 
 python() {
